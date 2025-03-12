@@ -1844,6 +1844,7 @@ M.Prompt = function(params, target, agent, template, prompt, whisper, callback)
 			cursor = false
 		end
 
+		M.logger.info("Prompt() messages " .. vim.inspect(messages))
 		-- mode specific logic
 		if target == M.Target.rewrite then
 			-- delete selection
