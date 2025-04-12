@@ -1124,7 +1124,7 @@ M.chat_respond = function(params)
 					headers.provider or agent.provider,
 					M.dispatcher.prepare_payload(messages, headers.model or agent.model, headers.provider or agent.provider),
 					topic_handler,
-					vim.schedule_wrap(function()
+					vim.schedule_wrap(function(qqid)
 						-- get topic from invisible buffer
 						local topic = vim.api.nvim_buf_get_lines(topic_buf, 0, -1, false)[1]
 						-- close invisible buffer
@@ -1142,6 +1142,10 @@ M.chat_respond = function(params)
 						-- replace topic in current buffer
 						M.helpers.undojoin(buf)
 						vim.api.nvim_buf_set_lines(buf, 0, 1, false, { "# topic: " .. topic })
+						M.helpers.fire_event("GpDone", {
+							reason = "Topic generated",
+							qid = qqid,
+						})
 					end)
 				)
 			end
@@ -1149,7 +1153,11 @@ M.chat_respond = function(params)
 				local line = vim.api.nvim_buf_line_count(buf)
 				M.helpers.cursor_to_line(line, buf, win)
 			end
-			vim.cmd("doautocmd User GpDone")
+			M.helpers.fire_event("GpDone", {
+				reason = "Response generated",
+				called_from = "M.chat_respond()",
+				qid = qid,
+			})
 		end)
 	)
 end
@@ -1844,6 +1852,7 @@ M.Prompt = function(params, target, agent, template, prompt, whisper, callback)
 			cursor = false
 		end
 
+		M.logger.info("Prompt() messages " .. vim.inspect(messages))
 		-- mode specific logic
 		if target == M.Target.rewrite then
 			-- delete selection
@@ -1934,7 +1943,11 @@ M.Prompt = function(params, target, agent, template, prompt, whisper, callback)
 			handler,
 			vim.schedule_wrap(function(qid)
 				on_exit(qid)
-				vim.cmd("doautocmd User GpDone")
+				M.helpers.fire_event("GpDone", {
+					reason = "Response generated",
+					called_from = "M.Prompt()",
+					qid = qid,
+				})
 			end),
 			callback
 		)

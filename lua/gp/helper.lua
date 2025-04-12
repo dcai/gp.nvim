@@ -293,4 +293,12 @@ _H.create_user_command = function(cmd_name, cmd_func, completion, desc)
 	})
 end
 
+_H.fire_event = function(event, data)
+	vim.api.nvim_exec_autocmds("User", {
+		pattern = event,
+		modeline = false,
+		data = data,
+	})
+end
+
 return _H
