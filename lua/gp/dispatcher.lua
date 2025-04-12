@@ -224,7 +224,12 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 		ns_id = nil,
 		ex_id = nil,
 	})
-
+	helpers.fire_event("GpQueryStarted", {
+		qid = qid,
+		buf = buf,
+		provider = provider,
+		payload = payload,
+	})
 	local out_reader = function()
 		local buffer = ""
 
