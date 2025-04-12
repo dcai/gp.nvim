@@ -320,6 +320,8 @@ local config = {
 	-- if you want more real estate in your chat files and don't need the helper text
 	-- chat_template = require("gp.defaults").short_chat_template,
 	-- chat topic generation prompt
+	chat_topic_gen_model = "gpt-4o-mini",
+	chat_topic_gen_provider = "openai",
 	chat_topic_gen_prompt = "Summarize the topic of our conversation above"
 		.. " in two or three words. Respond only with those words.",
 	-- chat topic model (string with model name or table with model name and parameters)
