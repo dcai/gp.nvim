@@ -66,10 +66,11 @@ D.setup = function(opts)
 	logger.debug("dispatcher setup finished\n" .. vim.inspect(D))
 end
 
----@param messages table
+---@param input_messages table
 ---@param model string | table
 ---@param provider string | nil
-D.prepare_payload = function(messages, model, provider)
+D.prepare_payload = function(input_messages, model, provider)
+	local messages = vim.fn.deepcopy(input_messages)
 	if type(model) == "string" then
 		return {
 			model = model,
@@ -224,7 +225,15 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 		ns_id = nil,
 		ex_id = nil,
 	})
+	helpers.fire_event("GpQueryStarted", {
+		qid = qid,
+		buf = buf,
+		provider = provider,
+		payload = payload,
+	})
 
+	--- window to capture chain of thoughts
+	local win_cot = vim.g.new_win and vim.g.new_win({ x = 1, y = 1, filetype = "markdown" }) or { append = function() end }
 	local out_reader = function()
 		local buffer = ""
 
@@ -244,6 +253,10 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 				local content = ""
 				if line:match("choices") and line:match("delta") and line:match("content") then
 					line = vim.json.decode(line)
+					if line.choices[1] and line.choices[1].delta and line.choices[1].delta.reasoning_content then
+						local reasoning_content = line.choices[1].delta.reasoning_content
+						win_cot.append(reasoning_content)
+					end
 					if line.choices[1] and line.choices[1].delta and line.choices[1].delta.content then
 						content = line.choices[1].delta.content
 					end
@@ -266,7 +279,6 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 						content = vim.json.decode("{" .. line .. "}").text
 					end
 				end
-
 
 				if content and type(content) == "string" then
 					qt.response = qt.response .. content
@@ -303,9 +315,29 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 				end
 				local raw_response = qt.raw_response
 				local content = qt.response
-				if (qt.provider == 'openai' or qt.provider == 'copilot') and content == "" and raw_response:match('choices') and raw_response:match("content") then
+				if
+					(qt.provider == "openai" or qt.provider == "copilot")
+					and content == ""
+					and raw_response:match("choices")
+					and raw_response:match("content")
+				then
 					local response = vim.json.decode(raw_response)
-					if response.choices and response.choices[1] and response.choices[1].message and response.choices[1].message.content then
+
+					if
+						response.choices
+						and response.choices[1]
+						and response.choices[1].message
+						and response.choices[1].message.reasoning_content
+					then
+						local reasoning_content = response.choices[1].message.reasoning_content
+						win_cot.append(reasoning_content)
+					end
+					if
+						response.choices
+						and response.choices[1]
+						and response.choices[1].message
+						and response.choices[1].message.content
+					then
 						content = response.choices[1].message.content
 					end
 					if content and type(content) == "string" then
@@ -313,7 +345,6 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 						handler(qid, content)
 					end
 				end
-
 
 				if qt.response == "" then
 					logger.error(qt.provider .. " response is empty: \n" .. vim.inspect(qt.raw_response))
@@ -395,8 +426,7 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 		}
 	end
 
-	local temp_file = D.query_dir ..
-		"/" .. logger.now() .. "." .. string.format("%x", math.random(0, 0xFFFFFF)) .. ".json"
+	local temp_file = D.query_dir .. "/" .. logger.now() .. "." .. string.format("%x", math.random(0, 0xFFFFFF)) .. ".json"
 	helpers.table_to_file(payload, temp_file)
 
 	local curl_params = vim.deepcopy(D.config.curl_params or {})
