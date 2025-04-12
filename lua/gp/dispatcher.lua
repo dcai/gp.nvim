@@ -66,10 +66,11 @@ D.setup = function(opts)
 	logger.debug("dispatcher setup finished\n" .. vim.inspect(D))
 end
 
----@param messages table
+---@param input_messages table
 ---@param model string | table
 ---@param provider string | nil
-D.prepare_payload = function(messages, model, provider)
+D.prepare_payload = function(input_messages, model, provider)
+	local messages = vim.fn.deepcopy(input_messages)
 	if type(model) == "string" then
 		return {
 			model = model,

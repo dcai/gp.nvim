@@ -1118,11 +1118,13 @@ M.chat_respond = function(params)
 				local topic_buf = vim.api.nvim_create_buf(false, true)
 				local topic_handler = M.dispatcher.create_handler(topic_buf, nil, 0, false, "", false)
 
+				local topic_gen_provider = M.config.chat_topic_gen_provider or headers.provider or agent.provider
+				local topic_gen_model = M.config.chat_topic_gen_model or headers.model or agent.model
 				-- call the model
 				M.dispatcher.query(
 					nil,
-					headers.provider or agent.provider,
-					M.dispatcher.prepare_payload(messages, headers.model or agent.model, headers.provider or agent.provider),
+					topic_gen_provider,
+					M.dispatcher.prepare_payload(messages, topic_gen_model, topic_gen_provider),
 					topic_handler,
 					vim.schedule_wrap(function(qqid)
 						-- get topic from invisible buffer
