@@ -244,6 +244,9 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 				local content = ""
 				if line:match("choices") and line:match("delta") and line:match("content") then
 					line = vim.json.decode(line)
+					if line.choices[1] and line.choices[1].delta and line.choices[1].delta.reasoning_content then
+						content = line.choices[1].delta.reasoning_content
+					end
 					if line.choices[1] and line.choices[1].delta and line.choices[1].delta.content then
 						content = line.choices[1].delta.content
 					end
@@ -266,7 +269,6 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 						content = vim.json.decode("{" .. line .. "}").text
 					end
 				end
-
 
 				if content and type(content) == "string" then
 					qt.response = qt.response .. content
@@ -303,9 +305,28 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 				end
 				local raw_response = qt.raw_response
 				local content = qt.response
-				if (qt.provider == 'openai' or qt.provider == 'copilot') and content == "" and raw_response:match('choices') and raw_response:match("content") then
+				if
+					(qt.provider == "openai" or qt.provider == "copilot")
+					and content == ""
+					and raw_response:match("choices")
+					and raw_response:match("content")
+				then
 					local response = vim.json.decode(raw_response)
-					if response.choices and response.choices[1] and response.choices[1].message and response.choices[1].message.content then
+
+					if
+						response.choices
+						and response.choices[1]
+						and response.choices[1].message
+						and response.choices[1].message.reasoning_content
+					then
+						content = response.choices[1].message.reasoning_content
+					end
+					if
+						response.choices
+						and response.choices[1]
+						and response.choices[1].message
+						and response.choices[1].message.content
+					then
 						content = response.choices[1].message.content
 					end
 					if content and type(content) == "string" then
@@ -313,7 +334,6 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 						handler(qid, content)
 					end
 				end
-
 
 				if qt.response == "" then
 					logger.error(qt.provider .. " response is empty: \n" .. vim.inspect(qt.raw_response))
@@ -395,8 +415,7 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 		}
 	end
 
-	local temp_file = D.query_dir ..
-		"/" .. logger.now() .. "." .. string.format("%x", math.random(0, 0xFFFFFF)) .. ".json"
+	local temp_file = D.query_dir .. "/" .. logger.now() .. "." .. string.format("%x", math.random(0, 0xFFFFFF)) .. ".json"
 	helpers.table_to_file(payload, temp_file)
 
 	local curl_params = vim.deepcopy(D.config.curl_params or {})
