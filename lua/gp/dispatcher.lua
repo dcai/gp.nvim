@@ -231,6 +231,9 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 		provider = provider,
 		payload = payload,
 	})
+
+	--- window to capture chain of thoughts
+	local win_cot = vim.g.new_win and vim.g.new_win({ x = 1, y = 1, filetype = "markdown" }) or { append = function() end }
 	local out_reader = function()
 		local buffer = ""
 
@@ -251,7 +254,8 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 				if line:match("choices") and line:match("delta") and line:match("content") then
 					line = vim.json.decode(line)
 					if line.choices[1] and line.choices[1].delta and line.choices[1].delta.reasoning_content then
-						content = line.choices[1].delta.reasoning_content
+						local reasoning_content = line.choices[1].delta.reasoning_content
+						win_cot.append(reasoning_content)
 					end
 					if line.choices[1] and line.choices[1].delta and line.choices[1].delta.content then
 						content = line.choices[1].delta.content
@@ -325,7 +329,8 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 						and response.choices[1].message
 						and response.choices[1].message.reasoning_content
 					then
-						content = response.choices[1].message.reasoning_content
+						local reasoning_content = response.choices[1].message.reasoning_content
+						win_cot.append(reasoning_content)
 					end
 					if
 						response.choices
